@@ -36,6 +36,7 @@ builder.Services.AddScoped<IBeneficiaryService, BeneficiaryService>();
 builder.Services.AddScoped<IExchangeRateService, ExchangeRateService>();
 builder.Services.AddScoped<IDepositService, DepositService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
+builder.Services.AddScoped<DepositFileStorage>();
 builder.Services.AddScoped<KycFileStorage>();
 builder.Services.AddControllers(); builder.Services.AddEndpointsApiExplorer();
 

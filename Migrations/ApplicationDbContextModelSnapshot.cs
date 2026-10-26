@@ -297,6 +297,43 @@ namespace EverestRemit.Api.Migrations
                     b.ToTable("KycApplications");
                 });
 
+            modelBuilder.Entity("EverestRemit.Api.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ReplacedByTokenId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("EverestRemit.Api.Entities.RemittanceTransfer", b =>
                 {
                     b.Property<int>("Id")
@@ -518,6 +555,17 @@ namespace EverestRemit.Api.Migrations
                     b.HasOne("EverestRemit.Api.Entities.ApplicationUser", "User")
                         .WithOne("KycApplication")
                         .HasForeignKey("EverestRemit.Api.Entities.KycApplication", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("EverestRemit.Api.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("EverestRemit.Api.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

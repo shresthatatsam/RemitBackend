@@ -1,7 +1,125 @@
-using EverestRemit.Api.Data;using EverestRemit.Api.DTOs;using EverestRemit.Api.Entities;using EverestRemit.Api.Interfaces;using Microsoft.EntityFrameworkCore;
+
+using EverestRemit.Api.Data;
+using EverestRemit.Api.DTOs;
+using EverestRemit.Api.Entities;
+using EverestRemit.Api.Interfaces;
+using Microsoft.EntityFrameworkCore;
+
 namespace EverestRemit.Api.Services;
-public sealed class DepositService(ApplicationDbContext db):IDepositService{
-public async Task<IReadOnlyList<Deposit>> GetMineAsync(string uid,CancellationToken ct)=>await db.Deposits.AsNoTracking().Where(x=>x.UserId==uid).OrderByDescending(x=>x.CreatedAtUtc).ToListAsync(ct);
-public async Task<Deposit> CreateAsync(string uid,CreateDepositRequest r,CancellationToken ct){var x=new Deposit{UserId=uid,Amount=r.Amount,Currency=r.Currency.Trim().ToUpperInvariant(),ReferenceNumber=r.ReferenceNumber.Trim(),ProofUrl=r.ProofUrl};db.Add(x);await db.SaveChangesAsync(ct);return x;}
-public async Task<IReadOnlyList<Deposit>> GetAllAsync(CancellationToken ct)=>await db.Deposits.AsNoTracking().OrderBy(x=>x.CreatedAtUtc).ToListAsync(ct);
-public async Task<Deposit?> ReviewAsync(int id,ReviewDepositRequest r,CancellationToken ct){var x=await db.Deposits.FindAsync([id],ct);if(x==null)return null;if(x.Status!=DepositStatus.Pending)throw new InvalidOperationException("Only pending deposits can be reviewed.");x.Status=r.Status;x.AdminNote=r.AdminNote;x.ReviewedAtUtc=DateTime.UtcNow;await db.SaveChangesAsync(ct);return x;}}
+
+public sealed class DepositService(
+    ApplicationDbContext db,
+    DepositFileStorage fileStorage) : IDepositService
+{
+    public async Task<IReadOnlyList<Deposit>> GetMineAsync(
+        string uid,
+        CancellationToken ct)
+    {
+        return await db.Deposits
+            .AsNoTracking()
+            .Where(x => x.UserId == uid)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToListAsync(ct);
+    }
+
+    public async Task<Deposit> CreateAsync(
+        string uid,
+        CreateDepositRequest r,
+        CancellationToken ct)
+    {
+        if (r.Amount <= 0 || r.Amount > 100000000)
+        {
+            throw new ArgumentException(
+                "Amount must be between 0.01 and 100000000.");
+        }
+
+        var currency = r.Currency.Trim().ToUpperInvariant();
+
+        if (currency.Length != 3 ||
+            currency.Any(c => c < 'A' || c > 'Z'))
+        {
+            throw new ArgumentException(
+                "Currency must be a three-letter code.");
+        }
+
+        var referenceNumber = r.ReferenceNumber.Trim();
+
+        if (string.IsNullOrWhiteSpace(referenceNumber))
+        {
+            throw new ArgumentException(
+                "Reference number is required.");
+        }
+
+        // Save the uploaded proof image to private storage.
+        // The returned value is a generated file key.
+        var fileKey = await fileStorage.SaveAsync(
+            r.ProofImage,
+            ct);
+
+        var deposit = new Deposit
+        {
+            UserId = uid,
+            Amount = r.Amount,
+            Currency = currency,
+            ReferenceNumber = referenceNumber,
+            ProofUrl = fileKey,
+            Status = DepositStatus.Pending,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        try
+        {
+            db.Deposits.Add(deposit);
+            await db.SaveChangesAsync(ct);
+
+            return deposit;
+        }
+        catch
+        {
+            // Remove the uploaded file if database persistence fails.
+            fileStorage.Delete(fileKey);
+            throw;
+        }
+    }
+
+    public async Task<IReadOnlyList<Deposit>> GetAllAsync(
+        CancellationToken ct)
+    {
+        return await db.Deposits
+            .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToListAsync(ct);
+    }
+
+    public async Task<Deposit?> ReviewAsync(
+        int id,
+        ReviewDepositRequest r,
+        CancellationToken ct)
+    {
+        if (r.Status is not DepositStatus.Confirmed
+            and not DepositStatus.Rejected)
+        {
+            throw new ArgumentException(
+                "Status must be Confirmed or Rejected.");
+        }
+
+        var deposit = await db.Deposits.FindAsync([id], ct);
+
+        if (deposit is null)
+            return null;
+
+        if (deposit.Status != DepositStatus.Pending)
+        {
+            throw new InvalidOperationException(
+                "Only pending deposits can be reviewed.");
+        }
+
+        deposit.Status = r.Status;
+        deposit.AdminNote = r.AdminNote?.Trim();
+        deposit.ReviewedAtUtc = DateTime.UtcNow;
+
+        await db.SaveChangesAsync(ct);
+
+        return deposit;
+    }
+}
