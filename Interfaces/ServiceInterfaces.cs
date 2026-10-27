@@ -13,6 +13,14 @@ public interface IAuthService
     Task LogoutAsync(
         RefreshRequest request,
         CancellationToken ct);
+
+    Task ForgotPasswordAsync(
+    ForgotPasswordRequest request,
+    CancellationToken ct);
+
+    Task ResetPasswordAsync(
+        ResetPasswordRequest request,
+        CancellationToken ct);
 }
 public interface IKycService
 {

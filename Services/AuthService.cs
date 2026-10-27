@@ -18,7 +18,8 @@ namespace EverestRemit.Api.Services;
 public sealed class AuthService(
     UserManager<ApplicationUser> users,
     ApplicationDbContext db,
-    IConfiguration config) : IAuthService
+    IConfiguration config,
+    IEmailService emailService) : IAuthService
 {
     private static readonly TimeSpan RefreshLifetime =
         TimeSpan.FromDays(7);
@@ -212,6 +213,100 @@ public sealed class AuthService(
             rawRefreshToken,
             refreshExpiry);
     }
+
+
+    public async Task ForgotPasswordAsync(ForgotPasswordRequest request,CancellationToken ct)
+    {
+        var email = request.Email.Trim();
+        var user = await users.FindByEmailAsync(email);
+
+        // Do not reveal whether an email is registered.
+        if (user is null || !user.IsActive)
+            return;
+
+        var token = await users.GeneratePasswordResetTokenAsync(user);
+
+        var frontendUrl = config["PasswordReset:FrontendUrl"];
+
+        if (string.IsNullOrWhiteSpace(frontendUrl) ||
+            !Uri.TryCreate(frontendUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttps &&
+             uri.Scheme != Uri.UriSchemeHttp))
+        {
+            throw new InvalidOperationException(
+                "PasswordReset:FrontendUrl must be configured.");
+        }
+
+        var resetUrl =
+            $"{frontendUrl.TrimEnd('/')}/reset-password" +
+            $"?email={Uri.EscapeDataString(user.Email!)}" +
+            $"&token={Uri.EscapeDataString(token)}";
+
+        var html = $"""
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
+            <h2>Reset your EverestRemit password</h2>
+            <p>We received a request to reset your password.</p>
+            <p>Click the button below to choose a new password.</p>
+            <p>
+                <a href="{System.Net.WebUtility.HtmlEncode(resetUrl)}"
+                   style="background:#166534;color:white;padding:12px 20px;
+                          text-decoration:none;border-radius:6px;
+                          display:inline-block">
+                    Reset Password
+                </a>
+            </p>
+            <p>If you did not request this, you can ignore this email.</p>
+            <p>For your security, do not share this link with anyone.</p>
+            <p>EverestRemit Support</p>
+        </div>
+        """;
+
+        await emailService.SendAsync(
+            user.Email!,
+            "Reset your EverestRemit password",
+            html,
+            ct);
+    }
+
+
+    public async Task ResetPasswordAsync(ResetPasswordRequest request,CancellationToken ct)
+    {
+        var user = await users.FindByEmailAsync(
+            request.Email.Trim());
+
+        if (user is null || !user.IsActive)
+        {
+            throw new InvalidOperationException(
+                "The password reset link is invalid or expired.");
+        }
+
+        var result = await users.ResetPasswordAsync(
+            user,
+            request.Token,
+            request.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException(
+                string.Join("; ",
+                    result.Errors.Select(e => e.Description)));
+        }
+
+        // Revoke all existing refresh tokens after a password change.
+        var now = DateTime.UtcNow;
+
+        var activeTokens = await db.RefreshTokens
+            .Where(x => x.UserId == user.Id &&
+                        x.RevokedAtUtc == null &&
+                        x.ExpiresAtUtc > now)
+            .ToListAsync(ct);
+
+        foreach (var refreshToken in activeTokens)
+            refreshToken.RevokedAtUtc = now;
+
+        await db.SaveChangesAsync(ct);
+    }
+
 
     private static string GenerateRefreshToken()
     {

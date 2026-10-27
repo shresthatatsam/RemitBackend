@@ -13,12 +13,34 @@ using EverestRemit.Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+//builder.Services.AddIdentityCore<ApplicationUser>(o =>
+//{
+//    o.User.RequireUniqueEmail = true; o.Password.RequiredLength = 10; o.Password.RequireDigit = true;
+//    o.Password.RequireUppercase = true; o.Password.RequireLowercase = true; o.Password.RequireNonAlphanumeric = true;
+//    o.Lockout.MaxFailedAccessAttempts = 5; o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+//}).AddRoles<IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>().AddSignInManager();
+
+
+
 builder.Services.AddIdentityCore<ApplicationUser>(o =>
 {
-    o.User.RequireUniqueEmail = true; o.Password.RequiredLength = 10; o.Password.RequireDigit = true;
-    o.Password.RequireUppercase = true; o.Password.RequireLowercase = true; o.Password.RequireNonAlphanumeric = true;
-    o.Lockout.MaxFailedAccessAttempts = 5; o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-}).AddRoles<IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>().AddSignInManager();
+    o.User.RequireUniqueEmail = true;
+    o.Password.RequiredLength = 10;
+    o.Password.RequireDigit = true;
+    o.Password.RequireUppercase = true;
+    o.Password.RequireLowercase = true;
+    o.Password.RequireNonAlphanumeric = true;
+
+    o.Lockout.MaxFailedAccessAttempts = 5;
+    o.Lockout.DefaultLockoutTimeSpan =
+        TimeSpan.FromMinutes(15);
+})
+.AddRoles<IdentityRole>()
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddSignInManager()
+.AddDefaultTokenProviders();
+
+
 var secret = builder.Configuration["Jwt:Secret"];
 if (string.IsNullOrWhiteSpace(secret) || Encoding.UTF8.GetByteCount(secret) < 32) throw new InvalidOperationException("Set Jwt:Secret using user-secrets/environment variables; minimum 32 UTF-8 bytes.");
 var issuer = builder.Configuration["Jwt:Issuer"] ?? "EverestRemit";
@@ -38,6 +60,11 @@ builder.Services.AddScoped<IDepositService, DepositService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddScoped<DepositFileStorage>();
 builder.Services.AddScoped<KycFileStorage>();
+
+builder.Services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("Email"));
+
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddControllers(); builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>

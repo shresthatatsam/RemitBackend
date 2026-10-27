@@ -35,4 +35,41 @@ public sealed class AuthController(IAuthService s) : ControllerBase
 
         return NoContent();
     }
+
+
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(
+        ForgotPasswordRequest request,
+        CancellationToken ct)
+    {
+        await s.ForgotPasswordAsync(request, ct);
+
+        return Ok(new
+        {
+            message = "If the email is registered, a password reset link will be sent."
+        });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(
+        ResetPasswordRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            await s.ResetPasswordAsync(request, ct);
+
+            return Ok(new
+            {
+                message = "Password reset successfully. Please log in again."
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+
 }
