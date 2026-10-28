@@ -214,75 +214,127 @@ public sealed class AuthService(
             refreshExpiry);
     }
 
-
     public async Task ForgotPasswordAsync(ForgotPasswordRequest request,CancellationToken ct)
+{
+    var email = request.Email.Trim();
+    var user = await users.FindByEmailAsync(email);
+
+    // Never reveal whether an account exists.
+    if (user is null || !user.IsActive)
+        return;
+
+    // Invalidate previous unused OTPs for this user.
+    var previousOtps = await db.PasswordResetOtps
+        .Where(x => x.UserId == user.Id &&
+                    x.UsedAtUtc == null)
+        .ToListAsync(ct);
+
+    foreach (var previous in previousOtps)
+        previous.UsedAtUtc = DateTime.UtcNow;
+
+    var otp = RandomNumberGenerator
+        .GetInt32(0, 1_000_000)
+        .ToString("D6");
+
+    var otpRecord = new PasswordResetOtp
     {
-        var email = request.Email.Trim();
-        var user = await users.FindByEmailAsync(email);
+        Id = Guid.NewGuid(),
+        UserId = user.Id,
+        OtpHash = HashOtp(otp),
+        CreatedAtUtc = DateTime.UtcNow,
+        ExpiresAtUtc = DateTime.UtcNow.AddMinutes(5),
+        FailedAttempts = 0
+    };
 
-        // Do not reveal whether an email is registered.
-        if (user is null || !user.IsActive)
-            return;
+    db.PasswordResetOtps.Add(otpRecord);
+    await db.SaveChangesAsync(ct);
 
-        var token = await users.GeneratePasswordResetTokenAsync(user);
-
-        var frontendUrl = config["PasswordReset:FrontendUrl"];
-
-        if (string.IsNullOrWhiteSpace(frontendUrl) ||
-            !Uri.TryCreate(frontendUrl, UriKind.Absolute, out var uri) ||
-            (uri.Scheme != Uri.UriSchemeHttps &&
-             uri.Scheme != Uri.UriSchemeHttp))
-        {
-            throw new InvalidOperationException(
-                "PasswordReset:FrontendUrl must be configured.");
-        }
-
-        var resetUrl =
-            $"{frontendUrl.TrimEnd('/')}/reset-password" +
-            $"?email={Uri.EscapeDataString(user.Email!)}" +
-            $"&token={Uri.EscapeDataString(token)}";
-
-        var html = $"""
+    var html = $"""
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
             <h2>Reset your EverestRemit password</h2>
-            <p>We received a request to reset your password.</p>
-            <p>Click the button below to choose a new password.</p>
-            <p>
-                <a href="{System.Net.WebUtility.HtmlEncode(resetUrl)}"
-                   style="background:#166534;color:white;padding:12px 20px;
-                          text-decoration:none;border-radius:6px;
-                          display:inline-block">
-                    Reset Password
-                </a>
-            </p>
+            <p>Use the following verification code to reset your password:</p>
+            <h1 style="letter-spacing:8px">{otp}</h1>
+            <p>This code expires in 5 minutes.</p>
             <p>If you did not request this, you can ignore this email.</p>
-            <p>For your security, do not share this link with anyone.</p>
+            <p>Never share this code with anyone.</p>
             <p>EverestRemit Support</p>
         </div>
         """;
 
-        await emailService.SendAsync(
-            user.Email!,
-            "Reset your EverestRemit password",
-            html,
-            ct);
-    }
+    await emailService.SendAsync(
+        user.Email!,
+        "Your password reset verification code",
+        html,
+        ct);
+}
 
+private string HashOtp(string otp)
+{
+    // Configure PasswordReset:OtpPepper as a strong random secret.
+    var pepper = config["PasswordReset:OtpPepper"];
 
-    public async Task ResetPasswordAsync(ResetPasswordRequest request,CancellationToken ct)
+    if (string.IsNullOrWhiteSpace(pepper))
+        throw new InvalidOperationException(
+            "PasswordReset:OtpPepper must be configured.");
+
+    var key = Encoding.UTF8.GetBytes(pepper);
+    var data = Encoding.UTF8.GetBytes(otp);
+
+    return Convert.ToHexString(
+        HMACSHA256.HashData(key, data));
+}
+
+    public async Task ResetPasswordAsync(
+    ResetPasswordRequest request,
+    CancellationToken ct)
     {
-        var user = await users.FindByEmailAsync(
-            request.Email.Trim());
+        var email = request.Email.Trim();
+
+        var user = await users.FindByEmailAsync(email);
 
         if (user is null || !user.IsActive)
         {
             throw new InvalidOperationException(
-                "The password reset link is invalid or expired.");
+                "The verification code is invalid or expired.");
         }
+
+        var now = DateTime.UtcNow;
+
+        // Get the latest unused OTP.
+        var otpRecord = await db.PasswordResetOtps
+            .Where(x => x.UserId == user.Id &&
+                        x.UsedAtUtc == null)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+
+        if (otpRecord is null ||
+            otpRecord.ExpiresAtUtc <= now ||
+            otpRecord.FailedAttempts >= 5)
+        {
+            throw new InvalidOperationException(
+                "The verification code is invalid or expired.");
+        }
+
+        var suppliedHash = HashOtp(request.Otp);
+
+        if (!CryptographicOperations.FixedTimeEquals(
+            Convert.FromHexString(otpRecord.OtpHash),
+            Convert.FromHexString(suppliedHash)))
+        {
+            otpRecord.FailedAttempts++;
+            await db.SaveChangesAsync(ct);
+
+            throw new InvalidOperationException(
+                "The verification code is invalid or expired.");
+        }
+
+        // Consume the OTP before changing the password.
+        otpRecord.UsedAtUtc = now;
+        await db.SaveChangesAsync(ct);
 
         var result = await users.ResetPasswordAsync(
             user,
-            request.Token,
+            await users.GeneratePasswordResetTokenAsync(user),
             request.NewPassword);
 
         if (!result.Succeeded)
@@ -292,20 +344,111 @@ public sealed class AuthService(
                     result.Errors.Select(e => e.Description)));
         }
 
-        // Revoke all existing refresh tokens after a password change.
-        var now = DateTime.UtcNow;
-
+        // Revoke active refresh tokens after a successful reset.
         var activeTokens = await db.RefreshTokens
             .Where(x => x.UserId == user.Id &&
                         x.RevokedAtUtc == null &&
                         x.ExpiresAtUtc > now)
             .ToListAsync(ct);
 
-        foreach (var refreshToken in activeTokens)
-            refreshToken.RevokedAtUtc = now;
+        foreach (var token in activeTokens)
+            token.RevokedAtUtc = now;
 
         await db.SaveChangesAsync(ct);
     }
+
+
+    //public async Task ForgotPasswordAsync(ForgotPasswordRequest request,CancellationToken ct)
+    //{
+    //    var email = request.Email.Trim();
+    //    var user = await users.FindByEmailAsync(email);
+
+    //    // Do not reveal whether an email is registered.
+    //    if (user is null || !user.IsActive)
+    //        return;
+
+    //    var token = await users.GeneratePasswordResetTokenAsync(user);
+
+    //    var frontendUrl = config["PasswordReset:FrontendUrl"];
+
+    //    if (string.IsNullOrWhiteSpace(frontendUrl) ||
+    //        !Uri.TryCreate(frontendUrl, UriKind.Absolute, out var uri) ||
+    //        (uri.Scheme != Uri.UriSchemeHttps &&
+    //         uri.Scheme != Uri.UriSchemeHttp))
+    //    {
+    //        throw new InvalidOperationException(
+    //            "PasswordReset:FrontendUrl must be configured.");
+    //    }
+
+    //    var resetUrl =
+    //        $"{frontendUrl.TrimEnd('/')}/reset-password" +
+    //        $"?email={Uri.EscapeDataString(user.Email!)}" +
+    //        $"&token={Uri.EscapeDataString(token)}";
+
+    //    var html = $"""
+    //    <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
+    //        <h2>Reset your EverestRemit password</h2>
+    //        <p>We received a request to reset your password.</p>
+    //        <p>Click the button below to choose a new password.</p>
+    //        <p>
+    //            <a href="{System.Net.WebUtility.HtmlEncode(resetUrl)}"
+    //               style="background:#166534;color:white;padding:12px 20px;
+    //                      text-decoration:none;border-radius:6px;
+    //                      display:inline-block">
+    //                Reset Password
+    //            </a>
+    //        </p>
+    //        <p>If you did not request this, you can ignore this email.</p>
+    //        <p>For your security, do not share this link with anyone.</p>
+    //        <p>EverestRemit Support</p>
+    //    </div>
+    //    """;
+
+    //    await emailService.SendAsync(
+    //        user.Email!,
+    //        "Reset your EverestRemit password",
+    //        html,
+    //        ct);
+    //}
+
+
+    //public async Task ResetPasswordAsync(ResetPasswordRequest request,CancellationToken ct)
+    //{
+    //    var user = await users.FindByEmailAsync(
+    //        request.Email.Trim());
+
+    //    if (user is null || !user.IsActive)
+    //    {
+    //        throw new InvalidOperationException(
+    //            "The password reset link is invalid or expired.");
+    //    }
+
+    //    var result = await users.ResetPasswordAsync(
+    //        user,
+    //        request.Token,
+    //        request.NewPassword);
+
+    //    if (!result.Succeeded)
+    //    {
+    //        throw new InvalidOperationException(
+    //            string.Join("; ",
+    //                result.Errors.Select(e => e.Description)));
+    //    }
+
+    //    // Revoke all existing refresh tokens after a password change.
+    //    var now = DateTime.UtcNow;
+
+    //    var activeTokens = await db.RefreshTokens
+    //        .Where(x => x.UserId == user.Id &&
+    //                    x.RevokedAtUtc == null &&
+    //                    x.ExpiresAtUtc > now)
+    //        .ToListAsync(ct);
+
+    //    foreach (var refreshToken in activeTokens)
+    //        refreshToken.RevokedAtUtc = now;
+
+    //    await db.SaveChangesAsync(ct);
+    //}
 
 
     private static string GenerateRefreshToken()

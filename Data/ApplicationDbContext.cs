@@ -10,7 +10,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
     public DbSet<Deposit> Deposits => Set<Deposit>();
     public DbSet<RemittanceTransfer> Transfers => Set<RemittanceTransfer>();
-
+    public DbSet<PasswordResetOtp> PasswordResetOtps { get; set; }
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     protected override void OnModelCreating(ModelBuilder b)
     {
