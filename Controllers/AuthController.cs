@@ -6,13 +6,35 @@ namespace EverestRemit.Api.Controllers;
 [ApiController, Route("api/auth")]
 public sealed class AuthController(IAuthService s) : ControllerBase
 {
-    [HttpPost("register")] public async Task<IActionResult> Register(RegisterRequest r, CancellationToken ct) { try { return Ok(await s.RegisterAsync(r, ct)); } catch (InvalidOperationException e) { return Conflict(new { message = e.Message }); } }
-    [HttpPost("login")] public async Task<IActionResult> Login(LoginRequest r, CancellationToken ct) { try { return Ok(await s.LoginAsync(r, ct)); } catch (UnauthorizedAccessException) { return Unauthorized(new { message = "Invalid email or password." }); } }
+    [HttpPost("register")]
+    public async Task<IActionResult> Register(RegisterRequest r, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await s.RegisterAsync(r, ct));
+        }
+        catch (InvalidOperationException e)
+        {
+            return Conflict(new { message = e.Message });
+        }
+    }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login(LoginRequest r, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await s.LoginAsync(r, ct));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized(new { message = "Invalid email or password." });
+        }
+    }
 
 
     [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh(
-        RefreshRequest r, CancellationToken ct)
+    public async Task<IActionResult> Refresh(RefreshRequest r, CancellationToken ct)
     {
         try
         {
@@ -28,8 +50,7 @@ public sealed class AuthController(IAuthService s) : ControllerBase
     }
 
     [HttpPost("logout")]
-    public async Task<IActionResult> Logout(
-        RefreshRequest r, CancellationToken ct)
+    public async Task<IActionResult> Logout(RefreshRequest r, CancellationToken ct)
     {
         await s.LogoutAsync(r, ct);
 
@@ -39,9 +60,7 @@ public sealed class AuthController(IAuthService s) : ControllerBase
 
 
     [HttpPost("forgot-password")]
-    public async Task<IActionResult> ForgotPassword(
-        ForgotPasswordRequest request,
-        CancellationToken ct)
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request, CancellationToken ct)
     {
         await s.ForgotPasswordAsync(request, ct);
 
@@ -52,9 +71,7 @@ public sealed class AuthController(IAuthService s) : ControllerBase
     }
 
     [HttpPost("reset-password")]
-    public async Task<IActionResult> ResetPassword(
-        ResetPasswordRequest request,
-        CancellationToken ct)
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest request, CancellationToken ct)
     {
         try
         {
