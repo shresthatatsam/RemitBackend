@@ -25,7 +25,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         b.Entity<Deposit>().HasOne(x => x.User).WithMany(x => x.Deposits).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<RemittanceTransfer>().HasOne(x => x.User).WithMany(x => x.Transfers).HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<RemittanceTransfer>().HasOne(x => x.Beneficiary).WithMany().HasForeignKey(x => x.BeneficiaryId).OnDelete(DeleteBehavior.Restrict);
-        b.Entity<RemittanceTransfer>().HasOne(x => x.Deposit).WithMany().HasForeignKey(x => x.DepositId).OnDelete(DeleteBehavior.Restrict);
+        //b.Entity<RemittanceTransfer>().HasOne(x => x.Deposit).WithMany().HasForeignKey(x => x.DepositId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<RefreshToken>(entity =>
         {
             entity.HasKey(x => x.Id);

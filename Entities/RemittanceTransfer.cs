@@ -9,10 +9,9 @@ public sealed class RemittanceTransfer
     public ApplicationUser? User { get; set; }
     public int BeneficiaryId { get; set; }
     public Beneficiary? Beneficiary { get; set; }
-    public int? DepositId { get; set; }
-    public Deposit? Deposit { get; set; }
+    public string? ProofUrl { get; set; }
     public decimal SendAmount { get; set; }
-    public string SendCurrency { get; set; } = "USD";
+    public string SendCurrency { get; set; } = "AUD";
     public decimal ExchangeRate { get; set; }
     public decimal ReceiveAmountNpr { get; set; }
     public TransferStatus Status { get; set; } = TransferStatus.Pending;

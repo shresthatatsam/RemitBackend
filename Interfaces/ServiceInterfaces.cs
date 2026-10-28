@@ -48,4 +48,22 @@ public interface IDepositService {
     Task<Deposit?> ReviewAsync(
         int id, ReviewDepositRequest r, CancellationToken ct);
 }
-public interface ITransferService { Task<IReadOnlyList<RemittanceTransfer>> GetMineAsync(string userId, CancellationToken ct); Task<RemittanceTransfer> CreateAsync(string userId, CreateTransferRequest r, CancellationToken ct); Task<IReadOnlyList<RemittanceTransfer>> GetAllAsync(CancellationToken ct); Task<RemittanceTransfer?> UpdateStatusAsync(int id, UpdateTransferStatusRequest r, CancellationToken ct); }
+public interface ITransferService {
+    Task<IReadOnlyList<RemittanceTransfer>>
+       GetMineAsync(string uid, CancellationToken ct);
+
+    Task<RemittanceTransfer> CreateAsync(
+        string uid,
+        CreateTransferRequest r,
+        CancellationToken ct);
+
+    Task<IReadOnlyList<RemittanceTransfer>>
+        GetAllAsync(CancellationToken ct);
+
+    Task<RemittanceTransfer?> UpdateStatusAsync(
+        int id,
+        UpdateTransferStatusRequest r,
+        CancellationToken ct);
+}
+
+

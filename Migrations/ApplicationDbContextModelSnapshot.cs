@@ -385,12 +385,12 @@ namespace EverestRemit.Api.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("DepositId")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("ExchangeRate")
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("ProofUrl")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("ReceiveAmountNpr")
                         .HasPrecision(18, 2)
@@ -421,8 +421,6 @@ namespace EverestRemit.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BeneficiaryId");
-
-                    b.HasIndex("DepositId");
 
                     b.HasIndex("UserId");
 
@@ -614,11 +612,6 @@ namespace EverestRemit.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("EverestRemit.Api.Entities.Deposit", "Deposit")
-                        .WithMany()
-                        .HasForeignKey("DepositId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("EverestRemit.Api.Entities.ApplicationUser", "User")
                         .WithMany("Transfers")
                         .HasForeignKey("UserId")
@@ -626,8 +619,6 @@ namespace EverestRemit.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Beneficiary");
-
-                    b.Navigation("Deposit");
 
                     b.Navigation("User");
                 });
