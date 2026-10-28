@@ -4,6 +4,7 @@ using EverestRemit.Api.DTOs;
 using EverestRemit.Api.Entities;
 using EverestRemit.Api.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace EverestRemit.Api.Services;
 
@@ -71,9 +72,13 @@ public sealed class TransferService(
 
         // TODO: Replace with your active exchange-rate lookup.
         // Do not trust an exchange rate supplied by the client.
-        decimal rate = 123m;
+        //decimal rate = 123m;
+        var rate = await db.ExchangeRates.AsNoTracking()
+            .Where(x => x.FromCurrency == currency && x.ToCurrency == "NPR" && x.IsActive)
+            .OrderByDescending(x => x.EffectiveAtUtc).FirstOrDefaultAsync(ct);
+        if (rate == null) throw new InvalidOperationException("No active exchange rate for this currency to NPR.");
 
-        if (rate <= 0)
+        if (rate.Rate <= 0)
         {
             throw new InvalidOperationException(
                 "No active exchange rate for this currency to NPR.");
@@ -94,10 +99,10 @@ public sealed class TransferService(
                 SendAmount = r.SendAmount,
                 SendCurrency = currency,
 
-                ExchangeRate = rate,
+                ExchangeRate = rate.Rate,
 
                 ReceiveAmountNpr = decimal.Round(
-                    r.SendAmount * rate,
+                    r.SendAmount * rate.Rate,
                     2,
                     MidpointRounding.AwayFromZero),
 
@@ -177,4 +182,4 @@ public sealed class TransferService(
 
         return transfer;
     }
-}
+}; 
