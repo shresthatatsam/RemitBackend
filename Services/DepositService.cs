@@ -3,6 +3,7 @@ using EverestRemit.Api.Data;
 using EverestRemit.Api.DTOs;
 using EverestRemit.Api.Entities;
 using EverestRemit.Api.Interfaces;
+using EverestRemit.Api.Migrations;
 using Microsoft.EntityFrameworkCore;
 
 namespace EverestRemit.Api.Services;
@@ -17,7 +18,7 @@ public sealed class DepositService(
     {
         return await db.Deposits
             .AsNoTracking()
-            .Where(x => x.UserId == uid)
+            .Where(x => x.UserId == uid && x.IsActive)
             .OrderByDescending(x => x.CreatedAtUtc)
             .ToListAsync(ct);
     }
@@ -33,16 +34,18 @@ public sealed class DepositService(
                 "Amount must be between 0.01 and 100000000.");
         }
 
-        var currency = r.Currency.Trim().ToUpperInvariant();
+        //var currency = r.Currency.Trim().ToUpperInvariant();
 
-        if (currency.Length != 3 ||
-            currency.Any(c => c < 'A' || c > 'Z'))
-        {
-            throw new ArgumentException(
-                "Currency must be a three-letter code.");
-        }
+        //if (currency.Length != 3 ||
+        //    currency.Any(c => c < 'A' || c > 'Z'))
+        //{
+        //    throw new ArgumentException(
+        //        "Currency must be a three-letter code.");
+        //}
 
-        var referenceNumber = r.ReferenceNumber.Trim();
+        //var referenceNumber = r.ReferenceNumber.Trim();
+
+        var referenceNumber =$"DEP-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid():N}".Substring(0, 17).ToUpperInvariant();
 
         if (string.IsNullOrWhiteSpace(referenceNumber))
         {
@@ -60,7 +63,6 @@ public sealed class DepositService(
         {
             UserId = uid,
             Amount = r.Amount,
-            Currency = currency,
             ReferenceNumber = referenceNumber,
             ProofUrl = fileKey,
             Status = DepositStatus.Pending,

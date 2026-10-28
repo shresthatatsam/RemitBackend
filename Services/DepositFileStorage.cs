@@ -16,9 +16,7 @@ public sealed class DepositFileStorage
         Directory.CreateDirectory(_root);
     }
 
-    public async Task<string> SaveAsync(
-        IFormFile file,
-        CancellationToken ct)
+    public async Task<string> SaveAsync(IFormFile file,CancellationToken ct)
     {
         if (file == null || file.Length == 0)
             throw new ArgumentException(
@@ -83,6 +81,7 @@ public sealed class DepositFileStorage
         return Path.Combine(_root, key);
     }
 
+
     public bool Delete(string key)
     {
         var path = GetPath(key);
@@ -93,4 +92,40 @@ public sealed class DepositFileStorage
         File.Delete(path);
         return true;
     }
+
+
+
+    // Open a private image for reading
+    public FileStream OpenRead(string key)
+    {
+        var path = GetPath(key);
+
+        return new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read);
+    }
+
+    // Check if file exists
+    public bool Exists(string key)
+    {
+        return File.Exists(GetPath(key));
+    }
+
+    public string? GetContentType(string key)
+    {
+        var extension = Path.GetExtension(key)
+            .ToLowerInvariant();
+
+        return extension switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => null
+        };
+    }
+
+
 }

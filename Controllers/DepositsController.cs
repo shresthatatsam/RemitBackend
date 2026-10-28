@@ -1,10 +1,11 @@
 
-using System.Security.Claims;
 using EverestRemit.Api.DTOs;
 using EverestRemit.Api.Interfaces;
 using EverestRemit.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Identity.Client.Extensions.Msal;
+using System.Security.Claims;
 
 namespace EverestRemit.Api.Controllers;
 
@@ -188,4 +189,83 @@ public sealed class DepositsController(
             return BadRequest(new { message = "Invalid proof reference." });
         }
     }
+
+
+    [HttpGet("{key}")]
+    public IActionResult ViewImage(string key)
+    {
+        try
+        {
+            var contentType = fileStorage.GetContentType(key);
+
+            if (contentType == null)
+                return NotFound();
+
+            var stream = fileStorage.OpenRead(key);
+
+            // Do not cache confidential deposit images.
+            Response.Headers["Cache-Control"] =
+                "private, no-store";
+
+            Response.Headers["X-Content-Type-Options"] =
+                "nosniff";
+
+            return File(
+                stream,
+                contentType,
+                enableRangeProcessing: false);
+        }
+        catch (FileNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ArgumentException)
+        {
+            return NotFound();
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    // GET: /api/deposit-files/{key}/download
+    [HttpGet("{key}/download")]
+    public IActionResult Download(string key)
+    {
+        try
+        {
+            var contentType = fileStorage.GetContentType(key);
+
+            if (contentType == null)
+                return NotFound();
+
+            var stream = fileStorage.OpenRead(key);
+
+            Response.Headers["Cache-Control"] =
+                "private, no-store";
+
+            Response.Headers["X-Content-Type-Options"] =
+                "nosniff";
+
+            return File(
+                stream,
+                contentType,
+                fileDownloadName: "deposit-proof",
+                enableRangeProcessing: false);
+        }
+        catch (FileNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ArgumentException)
+        {
+            return NotFound();
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
 }

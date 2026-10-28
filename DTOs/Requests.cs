@@ -20,10 +20,6 @@ public sealed class ExchangeRateRequest{[Required,StringLength(3,MinimumLength=3
 public sealed class CreateDepositRequest{
     [Range(typeof(decimal),"0.01","100000000")]
     public decimal Amount{get;init;}
-    [Required,StringLength(3,MinimumLength=3)]
-    public string Currency{get;init;}="USD";
-    [Required]
-    public string ReferenceNumber{get;init;}="";
     [Required]
     public IFormFile ProofImage { get; init; } = null!;
 }

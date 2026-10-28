@@ -6,10 +6,13 @@ public sealed class Deposit
     public string UserId {get;set;}=""; 
     public ApplicationUser? User {get;set;} 
     public decimal Amount {get;set;} 
-    public string Currency {get;set;}="USD"; 
+    public string Currency {get;set;}="AUD"; 
     public string ReferenceNumber {get;set;}=""; 
     public string? ProofUrl {get;set;} 
-    public DepositStatus Status {get;set;}=DepositStatus.Pending; 
+    public DepositStatus Status {get;set;}=DepositStatus.Pending;
+
+    public bool IsActive { get; set; } = true;
+
     public string? AdminNote {get;set;} 
     public DateTime CreatedAtUtc {get;set;}=DateTime.UtcNow; 
     public DateTime? ReviewedAtUtc {get;set;} 
