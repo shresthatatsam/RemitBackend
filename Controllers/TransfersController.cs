@@ -41,6 +41,9 @@ public sealed class TransfersController(
                 "Transfers retrieved successfully"));
     }
 
+
+
+
     // POST: api/transfers
     // Customer: Create transfer with payment proof
     [HttpPost]
@@ -80,20 +83,7 @@ public sealed class TransfersController(
         }
     }
 
-    // GET: api/transfers/admin
-    // Admin: Get all transfers
-    [HttpGet("admin")]
-    [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> GetAll(CancellationToken ct)
-    {
-        var transfers = await transferService.GetAllAsync(ct);
-
-        return Ok(
-            ApiResponse<IReadOnlyList<TransferResponse>>.Ok(
-                transfers,
-                "All transfers retrieved successfully"));
-    }
-    // PUT: api/transfers/admin/{id}/status
+   
     // Admin: Update transfer status
     [HttpPut("admin/{id:int}/status")]
     [Authorize(Roles = "Admin")]
@@ -282,4 +272,44 @@ public sealed class TransfersController(
                 ApiResponse<object>.Fail("File directory not found."));
         }
     }
+
+
+    [HttpGet("mine/Pagination")]
+    public async Task<IActionResult> GetMine([FromQuery] int pageNumber = 1,[FromQuery] int pageSize = 10,CancellationToken ct = default)
+    {
+        var userId = CurrentUserId;
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized(
+                ApiResponse<object>.Fail("Unauthorized"));
+        }
+
+        var result = await transferService.GetMineAsync(
+            userId,
+            pageNumber,
+            pageSize,
+            ct);
+
+        return Ok(
+            ApiResponse<PaginatedResponse<TransferResponse>>.Ok(
+                result,
+                "Transfers retrieved successfully"));
+    }
+
+    [HttpGet("admin/Pagination")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1,[FromQuery] int pageSize = 10,CancellationToken ct = default)
+    {
+        var result = await transferService.GetAllAsync(
+            pageNumber,
+            pageSize,
+            ct);
+
+        return Ok(
+            ApiResponse<PaginatedResponse<TransferResponse>>.Ok(
+                result,
+                "All transfers retrieved successfully"));
+    }
+
 }

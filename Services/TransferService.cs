@@ -13,8 +13,7 @@ public sealed class TransferService(
     DepositFileStorage fileStorage) : ITransferService
 {
     // Get transfers belonging to current user
-    public async Task<IReadOnlyList<RemittanceTransfer>>
-        GetMineAsync(string uid, CancellationToken ct)
+    public async Task<IReadOnlyList<RemittanceTransfer>>GetMineAsync(string uid, CancellationToken ct)
     {
         return await db.Transfers
             .AsNoTracking()
@@ -25,10 +24,7 @@ public sealed class TransferService(
     }
 
     // Create remittance transfer + upload proof image
-    public async Task<RemittanceTransfer> CreateAsync(
-        string uid,
-        CreateTransferRequest r,
-        CancellationToken ct)
+    public async Task<RemittanceTransfer> CreateAsync(string uid,CreateTransferRequest r,CancellationToken ct)
     {
         // Validate amount
         if (r.SendAmount <= 0 ||
@@ -128,13 +124,80 @@ public sealed class TransferService(
             throw;
         }
     }
-
-    // Get all transfers for admin
-    public async Task<IReadOnlyList<TransferResponse>>GetAllAsync(CancellationToken ct)
+    public async Task<PaginatedResponse<TransferResponse>> GetMineAsync(
+    string uid,
+    int pageNumber,
+    int pageSize,
+    CancellationToken ct)
     {
-        return await db.Transfers
+        pageNumber = Math.Max(1, pageNumber);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = db.Transfers
             .AsNoTracking()
+            .Where(x => x.UserId == uid);
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
             .OrderByDescending(x => x.CreatedAtUtc)
+            .ThenByDescending(x => x.Id)
+            .Select(x => new TransferResponse
+            {
+                Id = x.Id,
+                TransferNumber = x.TransferNumber,
+
+                UserId = x.UserId,
+
+                BeneficiaryId = x.BeneficiaryId,
+                BeneficiaryName = x.Beneficiary != null
+                    ? x.Beneficiary.AccountName : null,
+                AccountNumber = x.Beneficiary != null
+                    ? x.Beneficiary.AccountNumber : null,
+                BankName = x.Beneficiary != null
+                    ? x.Beneficiary.BankName : null,
+                BankCountry = x.Beneficiary != null
+                    ? x.Beneficiary.BankCountry : null,
+
+                ProofUrl = x.ProofUrl,
+
+                SendAmount = x.SendAmount,
+                SendCurrency = x.SendCurrency,
+                ExchangeRate = x.ExchangeRate,
+                ReceiveAmountNpr = x.ReceiveAmountNpr,
+
+                Status = x.Status,
+                AdminNote = x.AdminNote,
+
+                CreatedAtUtc = x.CreatedAtUtc,
+                UpdatedAtUtc = x.UpdatedAtUtc
+            })
+            .ToListAsync(ct);
+
+        return new PaginatedResponse<TransferResponse>
+        {
+            Items = items,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        };
+    }
+
+    public async Task<PaginatedResponse<TransferResponse>> GetAllAsync(
+    int pageNumber,
+    int pageSize,
+    CancellationToken ct)
+    {
+        pageNumber = Math.Max(1, pageNumber);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = db.Transfers.AsNoTracking();
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ThenByDescending(x => x.Id)
             .Select(x => new TransferResponse
             {
                 Id = x.Id,
@@ -158,7 +221,6 @@ public sealed class TransferService(
 
                 SendAmount = x.SendAmount,
                 SendCurrency = x.SendCurrency,
-
                 ExchangeRate = x.ExchangeRate,
                 ReceiveAmountNpr = x.ReceiveAmountNpr,
 
@@ -169,7 +231,58 @@ public sealed class TransferService(
                 UpdatedAtUtc = x.UpdatedAtUtc
             })
             .ToListAsync(ct);
+
+        return new PaginatedResponse<TransferResponse>
+        {
+            Items = items,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        };
     }
+
+
+    // Get all transfers for admin
+    //public async Task<IReadOnlyList<TransferResponse>>GetAllAsync(CancellationToken ct)
+    //{
+    //    return await db.Transfers
+    //        .AsNoTracking()
+    //        .OrderByDescending(x => x.CreatedAtUtc)
+    //        .Select(x => new TransferResponse
+    //        {
+    //            Id = x.Id,
+    //            TransferNumber = x.TransferNumber,
+
+    //            UserId = x.UserId,
+    //            UserName = x.User != null ? x.User.UserName : null,
+    //            UserEmail = x.User != null ? x.User.Email : null,
+
+    //            BeneficiaryId = x.BeneficiaryId,
+    //            BeneficiaryName = x.Beneficiary != null
+    //                ? x.Beneficiary.AccountName : null,
+    //            AccountNumber = x.Beneficiary != null
+    //                ? x.Beneficiary.AccountNumber : null,
+    //            BankName = x.Beneficiary != null
+    //                ? x.Beneficiary.BankName : null,
+    //            BankCountry = x.Beneficiary != null
+    //                ? x.Beneficiary.BankCountry : null,
+
+    //            ProofUrl = x.ProofUrl,
+
+    //            SendAmount = x.SendAmount,
+    //            SendCurrency = x.SendCurrency,
+
+    //            ExchangeRate = x.ExchangeRate,
+    //            ReceiveAmountNpr = x.ReceiveAmountNpr,
+
+    //            Status = x.Status,
+    //            AdminNote = x.AdminNote,
+
+    //            CreatedAtUtc = x.CreatedAtUtc,
+    //            UpdatedAtUtc = x.UpdatedAtUtc
+    //        })
+    //        .ToListAsync(ct);
+    //}
 
     // Admin updates transfer status
     public async Task<RemittanceTransfer?>

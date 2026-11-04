@@ -59,26 +59,18 @@ public interface IExchangeRateService { Task<IReadOnlyList<ExchangeRate>> GetAct
 //}
 public interface ITransferService
 {
-    Task<IReadOnlyList<RemittanceTransfer>>
-       GetMineAsync(string uid, CancellationToken ct);
+    Task<IReadOnlyList<RemittanceTransfer>>GetMineAsync(string uid, CancellationToken ct);
 
-    Task<RemittanceTransfer> CreateAsync(
-        string uid,
-        CreateTransferRequest r,
-        CancellationToken ct);
+    Task<RemittanceTransfer> CreateAsync(string uid,CreateTransferRequest r,CancellationToken ct);
 
-    Task<IReadOnlyList<TransferResponse>> GetAllAsync(CancellationToken ct);
+    Task<RemittanceTransfer?> UpdateStatusAsync(int id,UpdateTransferStatusRequest r,CancellationToken ct);
 
-    Task<RemittanceTransfer?> UpdateStatusAsync(
-        int id,
-        UpdateTransferStatusRequest r,
-        CancellationToken ct);
+    Task<TransferResponse?> GetByIdAsync(int id,string? uid,bool isAdmin,CancellationToken ct);
 
-    Task<TransferResponse?> GetByIdAsync(
-    int id,
-    string? uid,
-    bool isAdmin,
-    CancellationToken ct);
+    Task<PaginatedResponse<TransferResponse>> GetMineAsync(string uid,int pageNumber,int pageSize,CancellationToken ct);
+
+    Task<PaginatedResponse<TransferResponse>> GetAllAsync(int pageNumber,int pageSize,CancellationToken ct);
+
 }
 
 
