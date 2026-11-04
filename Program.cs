@@ -56,7 +56,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IKycService, KycService>();
 builder.Services.AddScoped<IBeneficiaryService, BeneficiaryService>();
 builder.Services.AddScoped<IExchangeRateService, ExchangeRateService>();
-builder.Services.AddScoped<IDepositService, DepositService>();
+//builder.Services.AddScoped<IDepositService, DepositService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddScoped<DepositFileStorage>();
 builder.Services.AddScoped<KycFileStorage>();

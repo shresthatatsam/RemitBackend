@@ -6,6 +6,9 @@
 	  <UserSecretsId>99d5079c-c331-4565-8551-49ef53517fd3</UserSecretsId>
   </PropertyGroup>
 	<ItemGroup>
+	  <Compile Remove="Controllers\DepositsController.cs" />
+	</ItemGroup>
+	<ItemGroup>
 		<PackageReference Include="MailKit" Version="4.18.2" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
 		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.13" />

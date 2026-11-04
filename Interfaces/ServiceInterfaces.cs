@@ -43,20 +43,20 @@ public interface IBeneficiaryService
 
 }
 public interface IExchangeRateService { Task<IReadOnlyList<ExchangeRate>> GetActiveAsync(CancellationToken ct); Task<ExchangeRate> CreateAsync(string adminId, ExchangeRateRequest r, CancellationToken ct); }
-public interface IDepositService
-{
-    Task<IReadOnlyList<Deposit>> GetMineAsync(
-    string uid, CancellationToken ct);
+//public interface IDepositService
+//{
+//    Task<IReadOnlyList<Deposit>> GetMineAsync(
+//    string uid, CancellationToken ct);
 
-    Task<Deposit> CreateAsync(
-        string uid, CreateDepositRequest r, CancellationToken ct);
+//    Task<Deposit> CreateAsync(
+//        string uid, CreateDepositRequest r, CancellationToken ct);
 
-    Task<IReadOnlyList<Deposit>> GetAllAsync(
-        CancellationToken ct);
+//    Task<IReadOnlyList<Deposit>> GetAllAsync(
+//        CancellationToken ct);
 
-    Task<Deposit?> ReviewAsync(
-        int id, ReviewDepositRequest r, CancellationToken ct);
-}
+//    Task<Deposit?> ReviewAsync(
+//        int id, ReviewDepositRequest r, CancellationToken ct);
+//}
 public interface ITransferService
 {
     Task<IReadOnlyList<RemittanceTransfer>>
