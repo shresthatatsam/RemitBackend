@@ -2,8 +2,8 @@ using EverestRemit.Api.DTOs;
 using EverestRemit.Api.Entities;
 namespace EverestRemit.Api.Interfaces;
 
-public interface IAuthService 
-{ 
+public interface IAuthService
+{
     Task<AuthResponse> RegisterAsync(RegisterRequest r, CancellationToken ct);
     Task<AuthResponse> LoginAsync(LoginRequest r, CancellationToken ct);
     Task<AuthResponse> RefreshAsync(
@@ -29,13 +29,22 @@ public interface IKycService
     Task<IReadOnlyList<KycApplication>> GetAllAsync(CancellationToken ct);
     Task<KycApplication?> ReviewAsync(int id, ReviewKycRequest r, CancellationToken ct);
     Task<KycApplication> SavePersonalAsync(string userId, PersonalInformationRequest request, CancellationToken ct);
-    Task<KycApplication> SaveDocumentAsync(string userId,IdentityDocumentRequest request,CancellationToken ct);
+    Task<KycApplication> SaveDocumentAsync(string userId, IdentityDocumentRequest request, CancellationToken ct);
     Task<KycApplication> SaveSelfieAsync(string userId, SelfieRequest request, CancellationToken ct);
     Task<KycApplication> SubmitAsync(string userId, CancellationToken ct);
 }
-public interface IBeneficiaryService { Task<IReadOnlyList<Beneficiary>> GetMineAsync(string userId, CancellationToken ct); Task<Beneficiary> CreateAsync(string userId, BeneficiaryRequest r, CancellationToken ct); Task<Beneficiary?> UpdateAsync(string userId, int id, BeneficiaryRequest r, CancellationToken ct); Task<bool> DeleteAsync(string userId, int id, CancellationToken ct); }
+public interface IBeneficiaryService
+{
+    Task<IReadOnlyList<Beneficiary>> GetMineAsync(string userId, CancellationToken ct);
+    Task<Beneficiary> CreateAsync(string userId, BeneficiaryRequest r, CancellationToken ct);
+    Task<Beneficiary?> UpdateAsync(string userId, int id, BeneficiaryRequest r, CancellationToken ct);
+    Task<bool> DeleteAsync(string userId, int id, CancellationToken ct);
+    Task<PaginatedResponse<Beneficiary>> GetMineAsync(string uid, int pageNumber, int pageSize, CancellationToken ct);
+
+}
 public interface IExchangeRateService { Task<IReadOnlyList<ExchangeRate>> GetActiveAsync(CancellationToken ct); Task<ExchangeRate> CreateAsync(string adminId, ExchangeRateRequest r, CancellationToken ct); }
-public interface IDepositService {
+public interface IDepositService
+{
     Task<IReadOnlyList<Deposit>> GetMineAsync(
     string uid, CancellationToken ct);
 
@@ -48,7 +57,8 @@ public interface IDepositService {
     Task<Deposit?> ReviewAsync(
         int id, ReviewDepositRequest r, CancellationToken ct);
 }
-public interface ITransferService {
+public interface ITransferService
+{
     Task<IReadOnlyList<RemittanceTransfer>>
        GetMineAsync(string uid, CancellationToken ct);
 
@@ -57,13 +67,18 @@ public interface ITransferService {
         CreateTransferRequest r,
         CancellationToken ct);
 
-    Task<IReadOnlyList<RemittanceTransfer>>
-        GetAllAsync(CancellationToken ct);
+    Task<IReadOnlyList<TransferResponse>> GetAllAsync(CancellationToken ct);
 
     Task<RemittanceTransfer?> UpdateStatusAsync(
         int id,
         UpdateTransferStatusRequest r,
         CancellationToken ct);
+
+    Task<TransferResponse?> GetByIdAsync(
+    int id,
+    string? uid,
+    bool isAdmin,
+    CancellationToken ct);
 }
 
 

@@ -16,6 +16,38 @@ public sealed class BeneficiaryService(ApplicationDbContext db) : IBeneficiarySe
         await db.SaveChangesAsync(ct);
         return x;
     }
+
+    public async Task<PaginatedResponse<Beneficiary>> GetMineAsync(
+       string uid,
+       int pageNumber,
+       int pageSize,
+       CancellationToken ct)
+    {
+        pageNumber = Math.Max(1, pageNumber);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = db.Beneficiaries
+            .AsNoTracking()
+            .Where(x => x.UserId == uid);
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ThenByDescending(x => x.Id)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return new PaginatedResponse<Beneficiary>
+        {
+            Items = items,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        };
+    }
+
     public async Task<Beneficiary?> UpdateAsync(string uid, int id, BeneficiaryRequest r, CancellationToken ct)
     {
         var x = await db.Beneficiaries.SingleOrDefaultAsync(x => x.Id == id && x.UserId == uid, ct);

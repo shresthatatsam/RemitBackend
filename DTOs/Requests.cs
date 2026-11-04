@@ -39,4 +39,8 @@ public sealed class CreateTransferRequest
     public IFormFile ProofImage { get; init; } = null!;
 }
 public sealed class UpdateTransferStatusRequest
-{ public TransferStatus Status { get; init; } public string? AdminNote { get; init; } }
+{ 
+    public TransferStatus Status { get; init; } 
+    public string? AdminNote { get; init; } 
+}
+

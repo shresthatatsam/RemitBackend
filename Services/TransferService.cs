@@ -130,14 +130,44 @@ public sealed class TransferService(
     }
 
     // Get all transfers for admin
-    public async Task<IReadOnlyList<RemittanceTransfer>>
-        GetAllAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<TransferResponse>>GetAllAsync(CancellationToken ct)
     {
         return await db.Transfers
             .AsNoTracking()
-            .Include(x => x.Beneficiary)
-            .Include(x => x.User)
             .OrderByDescending(x => x.CreatedAtUtc)
+            .Select(x => new TransferResponse
+            {
+                Id = x.Id,
+                TransferNumber = x.TransferNumber,
+
+                UserId = x.UserId,
+                UserName = x.User != null ? x.User.UserName : null,
+                UserEmail = x.User != null ? x.User.Email : null,
+
+                BeneficiaryId = x.BeneficiaryId,
+                BeneficiaryName = x.Beneficiary != null
+                    ? x.Beneficiary.AccountName : null,
+                AccountNumber = x.Beneficiary != null
+                    ? x.Beneficiary.AccountNumber : null,
+                BankName = x.Beneficiary != null
+                    ? x.Beneficiary.BankName : null,
+                BankCountry = x.Beneficiary != null
+                    ? x.Beneficiary.BankCountry : null,
+
+                ProofUrl = x.ProofUrl,
+
+                SendAmount = x.SendAmount,
+                SendCurrency = x.SendCurrency,
+
+                ExchangeRate = x.ExchangeRate,
+                ReceiveAmountNpr = x.ReceiveAmountNpr,
+
+                Status = x.Status,
+                AdminNote = x.AdminNote,
+
+                CreatedAtUtc = x.CreatedAtUtc,
+                UpdatedAtUtc = x.UpdatedAtUtc
+            })
             .ToListAsync(ct);
     }
 
@@ -182,4 +212,45 @@ public sealed class TransferService(
 
         return transfer;
     }
+
+
+    public async Task<TransferResponse?> GetByIdAsync(
+        int id,
+        string? uid,
+        bool isAdmin,
+        CancellationToken ct)
+    {
+        var query = db.Transfers
+            .AsNoTracking()
+            .Where(x => x.Id == id);
+
+        if (!isAdmin)
+            query = query.Where(x => x.UserId == uid);
+
+        return await query
+            .Select(x => new TransferResponse
+            {
+                Id = x.Id,
+                TransferNumber = x.TransferNumber,
+                UserId = x.UserId,
+
+                BeneficiaryId = x.BeneficiaryId,
+                BeneficiaryName = x.Beneficiary != null
+                    ? x.Beneficiary.AccountName : null,
+
+                ProofUrl = x.ProofUrl,
+
+                SendAmount = x.SendAmount,
+                SendCurrency = x.SendCurrency,
+                ExchangeRate = x.ExchangeRate,
+                ReceiveAmountNpr = x.ReceiveAmountNpr,
+
+                Status = x.Status,
+                AdminNote = x.AdminNote,
+                CreatedAtUtc = x.CreatedAtUtc,
+                UpdatedAtUtc = x.UpdatedAtUtc
+            })
+            .SingleOrDefaultAsync(ct);
+    }
+
 }; 
