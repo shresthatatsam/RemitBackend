@@ -177,9 +177,13 @@ public sealed class TransferService(
         return new PaginatedResponse<TransferResponse>
         {
             Items = items,
-            PageNumber = pageNumber,
-            PageSize = pageSize,
-            TotalCount = totalCount
+            Pagination = new PaginationMetadata
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            }
+            
         };
     }
 
@@ -235,54 +239,17 @@ public sealed class TransferService(
         return new PaginatedResponse<TransferResponse>
         {
             Items = items,
-            PageNumber = pageNumber,
-            PageSize = pageSize,
-            TotalCount = totalCount
+            Pagination = new PaginationMetadata
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            }
         };
     }
 
 
-    // Get all transfers for admin
-    //public async Task<IReadOnlyList<TransferResponse>>GetAllAsync(CancellationToken ct)
-    //{
-    //    return await db.Transfers
-    //        .AsNoTracking()
-    //        .OrderByDescending(x => x.CreatedAtUtc)
-    //        .Select(x => new TransferResponse
-    //        {
-    //            Id = x.Id,
-    //            TransferNumber = x.TransferNumber,
-
-    //            UserId = x.UserId,
-    //            UserName = x.User != null ? x.User.UserName : null,
-    //            UserEmail = x.User != null ? x.User.Email : null,
-
-    //            BeneficiaryId = x.BeneficiaryId,
-    //            BeneficiaryName = x.Beneficiary != null
-    //                ? x.Beneficiary.AccountName : null,
-    //            AccountNumber = x.Beneficiary != null
-    //                ? x.Beneficiary.AccountNumber : null,
-    //            BankName = x.Beneficiary != null
-    //                ? x.Beneficiary.BankName : null,
-    //            BankCountry = x.Beneficiary != null
-    //                ? x.Beneficiary.BankCountry : null,
-
-    //            ProofUrl = x.ProofUrl,
-
-    //            SendAmount = x.SendAmount,
-    //            SendCurrency = x.SendCurrency,
-
-    //            ExchangeRate = x.ExchangeRate,
-    //            ReceiveAmountNpr = x.ReceiveAmountNpr,
-
-    //            Status = x.Status,
-    //            AdminNote = x.AdminNote,
-
-    //            CreatedAtUtc = x.CreatedAtUtc,
-    //            UpdatedAtUtc = x.UpdatedAtUtc
-    //        })
-    //        .ToListAsync(ct);
-    //}
+   
 
     // Admin updates transfer status
     public async Task<RemittanceTransfer?>

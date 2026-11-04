@@ -28,7 +28,7 @@ public sealed class BeneficiariesController(IBeneficiaryService s)
     }
 
     // GET: api/beneficiaries/mine?pageNumber=1&pageSize=10
-    [HttpGet("mine")]
+    [HttpGet("mine/Pagination")]
     public async Task<IActionResult> GetMine(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,

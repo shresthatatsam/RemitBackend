@@ -42,9 +42,12 @@ public sealed class BeneficiaryService(ApplicationDbContext db) : IBeneficiarySe
         return new PaginatedResponse<Beneficiary>
         {
             Items = items,
-            PageNumber = pageNumber,
-            PageSize = pageSize,
-            TotalCount = totalCount
+            Pagination = new PaginationMetadata
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            }
         };
     }
 
